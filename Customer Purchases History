@@ -1,0 +1,74 @@
+import pandas as pd
+from mlxtend.frequent_patterns import apriori, association_rules
+
+#Silence warnings
+import warnings
+warnings.filterwarnings('ignore')
+
+# Open the groceries.csv file in read mode ('r')
+with open("Market_Basket_Optimisation.csv", 'r') as file:
+    
+    # Read the file line by line, strip any leading/trailing whitespace, 
+    # and split each line by commas to create a list of items (i.e., a transaction)
+    data = [line.strip().split(',') for line in file]
+
+# Display the first five transactions (each transaction is a list of items)
+for transaction in data[:5]:
+    print(transaction)
+
+pd.set_option("display.max_columns", None)
+pd
+
+# Create a one-hot encoded DataFrame for the items
+
+from mlxtend.preprocessing import TransactionEncoder
+te = TransactionEncoder()
+te_data = te.fit(data).transform(data)
+
+data = pd.DataFrame(te_data, columns=te.columns_)
+data
+
+frequent_itemsets = apriori(data, min_support=0.01, use_colnames=True)
+
+# Display the frequent itemsets found
+frequent_itemsets.head()
+
+# check the shape of the dataset
+frequent_itemsets.shape
+
+# Use the frequent itemsets to generate association rules.
+rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1)
+
+# Display the first few association rules
+rules.head()
+
+# Filter the rules to focus on those with high confidence or lift values.
+strong_rules = rules[(rules['lift'] > 1) & (rules['confidence'] > 0.5)]
+
+# Sort the rules by lift, in descending order
+strong_rules = strong_rules.sort_values(by='lift', ascending=False)
+
+# Display the filtered rules
+strong_rules
+
+#Statistical analysis on strong rules
+strong_rules.describe()
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Visualize the top 10 rules based on lift
+%matplotlib inline
+plt.figure(figsize=(10, 6))
+sns.barplot(x=strong_rules['lift'].head(10), y=strong_rules['antecedents'].head(10).astype(str))
+plt.title('Top 10 Association Rules by Lift')
+plt.xlabel('Lift')
+plt.ylabel('Itemset')
+plt.show()
+
+
+
+
+
+
+
