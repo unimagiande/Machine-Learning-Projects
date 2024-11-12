@@ -1,0 +1,97 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
+from sklearn.metrics import silhouette_score
+
+print(f' Libraries successfully imported')
+
+data = pd.read_csv('Credit_card_dataset.csv')
+data
+
+#display first 5 rows
+data.head() 
+
+#Take statistics of data and values
+data.info()
+
+#descriptive statistics on numerical data
+data.describe().T
+
+#Check for missing values
+missing_values = data.isnull().sum()
+missing_values
+
+# Drop 'CUST_ID' column as it's not useful for clustering
+data = data.drop(columns=['CUST_ID'])
+print(f' CUST_ID successfully droped')
+
+# Outlier handling (using IQR for example)
+Q1 = data.quantile(0.25)
+Q3 = data.quantile(0.75)
+IQR = Q3 - Q1
+
+# Removing outliers outside 1.5*IQR range (example)
+data = data[~((data < (Q1 - 1.5 * IQR)) | (data > (Q3 + 1.5 * IQR))).any(axis=1)]
+
+# Selecting only the necessary columns for clustering
+data_clustering = data[['PURCHASES', 'CREDIT_LIMIT']]
+data_clustering
+
+# Scaling the data
+scaler = StandardScaler()
+data_scaled = scaler.fit_transform(data_clustering)
+
+# Hierarchical Clustering
+linked = linkage(data_scaled, method='ward')
+
+# Plotting dendrogram
+plt.figure(figsize=(10, 7))
+dendrogram(linked, orientation='top')
+plt.title('Hierarchical Clustering Dendrogram')
+plt.xlabel('Index')
+plt.ylabel('Distance')
+plt.show()
+
+# Choosing a threshold and forming clusters
+clusters_hierarchical = fcluster(linked, t=40, criterion='distance') #40 is the best fit for the hierarchical clustering
+data['Cluster_Hierarchical'] = clusters_hierarchical
+
+# Visualize clusters
+plt.figure(figsize=(8, 6))
+sns.scatterplot(x=data['PURCHASES'], y=data['CREDIT_LIMIT'], hue=data['Cluster_Hierarchical'], palette='viridis')
+plt.title("Hierarchical Clustering: Purchases vs Credit Limit")
+plt.show()
+
+# Determine the optimal number of clusters (Elbow Method)
+opt_num = []
+for i in range(1, 11):
+    kmeans = KMeans(n_clusters=i, init='k-means++', random_state=42)
+    kmeans.fit(data_scaled)
+    opt_num.append(kmeans.inertia_)
+
+#plot the k-mean 
+plt.figure(figsize=(8, 6))
+plt.plot(range(1, 11), opt_num, marker='o')
+plt.title('Elbow Method for Optimal k')
+plt.xlabel('Number of clusters')
+plt.ylabel('opt_num')
+plt.show()
+
+# Based on the Elbow Method, choose an optimal k value (let's assume k=3 for this example)
+k = 4
+kmeans = KMeans(n_clusters=k, init='k-means++', random_state=42)
+data['Cluster_KMeans'] = kmeans.fit_predict(data_scaled)
+
+# Visualize K-means clusters
+plt.figure(figsize=(8, 6))
+sns.scatterplot(x=data['PURCHASES'], y=data['CREDIT_LIMIT'], hue=data['Cluster_KMeans'], palette='cool')
+plt.title("K-means Clustering: Purchases vs Credit Limit")
+plt.show()
+
+# Calculate silhouette score
+sil_score = round(silhouette_score(data_scaled, data['Cluster_KMeans']),2) #rounds the value to two decimal places
+print(f'Silhouette Score for K-means clustering with k={k}:', sil_score)
