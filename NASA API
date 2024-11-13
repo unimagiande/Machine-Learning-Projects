@@ -1,0 +1,57 @@
+import requests
+import pandas as pd
+
+#The base URL of the API 
+url = "https://api.nasa.gov/planetary/apod"
+
+#API and parameters
+api_key = "PWs8IApqpAPjCvR0K5W95SA7GuhMvR5rrk7D2SNa"
+# Parameters to pass to the API (e.g., date, start date, end date, count and API key)
+params = {
+    "api_key": api_key,  # Replace with your API key
+    "date": "2024-11-07",       # Example date; make sure it’s valid if you’re using 'date'
+    "hd": "true",                # Optional field for high-definition images
+
+# Send a GET request to the API
+response = requests.get(url, params = params)
+
+#Check if the request was successful
+response.status_code == 200
+
+if response.status_code == 200:
+    data = response.json() # This stores the response in the variable (data)
+else:
+    print("Error:", response.status_code, response.text)
+
+# Display the NASA image as JSON
+from IPython.display import Image, display
+image_url = data['url']  # Get the URL of the image from the JSON data
+display(Image(url=image_url))
+
+# Retrieve asteroid data
+asteroid_url = f"https://api.nasa.gov/neo/rest/v1/feed?api_key={api_key}" # Get Url to extract data 
+response = requests.get(asteroid_url) # Get response from the API
+asteroid_data = response.json() # Stores response in the variable
+
+# Extract relevant details and store them in a DataFrame
+asteroids = []
+for neo in asteroid_data['near_earth_objects']:
+    for asteroid in asteroid_data['near_earth_objects'][neo]:
+        asteroids.append({
+            "Asteroid ID": asteroid['id'],
+            "Asteroid name": asteroid['name'],
+            "Minimal estimated diameter in Kilometre": asteroid['estimated_diameter']['kilometers']['estimated_diameter_min'],
+            "Absolute_magnitude": asteroid['absolute_magnitude_h'],
+            "Relative_velocity(km/s)": asteroid['close_approach_data'][0]['relative_velocity']['kilometers_per_second']
+        })
+
+# Displaying a clean version of the DataFrame
+data_asteroids.head()
+
+data_asteroids.info()
+
+# Export the data as a CSV file
+data_asteroids.to_csv("asteroid_data.csv", index=False)
+
+
+
